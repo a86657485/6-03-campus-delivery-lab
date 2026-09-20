@@ -47,7 +47,7 @@ async function body(req){
  try{return JSON.parse(data||'{}');}catch{throw Error('提交格式错误');}
 }
 function validate(payload){return rules.validPayload(payload);}
-const files={'/assets/campus.png':'assets/campus.png','/':'index.html','/demo':'index.html','/test':'index.html','/index.html':'index.html','/app.js':'app.js','/scene.js':'scene.js','/sync.js':'sync.js','/style.css':'style.css','/rules.js':'rules.js','/teacher':'teacher.html','/teacher.html':'teacher.html','/teacher.js':'teacher.js'};
+const files={'/assets/campus.png':'assets/campus.png','/assets/teacher-lan.png':'assets/teacher-lan.png','/assets/robot-xiaoda.png':'assets/robot-xiaoda.png','/':'index.html','/demo':'index.html','/test':'index.html','/index.html':'index.html','/app.js':'app.js','/story.js':'story.js','/scene.js':'scene.js','/sync.js':'sync.js','/style.css':'style.css','/rules.js':'rules.js','/teacher':'teacher.html','/teacher.html':'teacher.html','/teacher.js':'teacher.js'};
 const server=http.createServer(async(req,res)=>{
  res.setHeader('X-Content-Type-Options','nosniff');
  res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; form-action 'self'");

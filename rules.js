@@ -140,6 +140,7 @@ function validRecord(id,r){
 function validPayload(p){
  if(!p||!stages.some(s=>s.id===p.stage)||!p.records||Array.isArray(p.records)||typeof p.records!=='object'||!Array.isArray(p.archives)||p.archives.length>100)return false;
  if(JSON.stringify(p).length>300000)return false;
+ if(p.story!==undefined&&(!object(p.story)||!onlyKeys(p.story,['seen'])||!Array.isArray(p.story.seen)||p.story.seen.length>stages.length||new Set(p.story.seen).size!==p.story.seen.length||p.story.seen.some(id=>!stages.some(s=>s.id===id))))return false;
  const permitted=[...stages.map(s=>s.id),'parameter'];
  for(const [id,r]of Object.entries(p.records)){
   if(!permitted.includes(id)||!validRecord(id,r))return false;

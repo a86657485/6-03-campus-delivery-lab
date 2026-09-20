@@ -78,3 +78,9 @@ test('reject malformed nested records and forged completion',()=>{
  a.equal(R.validPayload({...base,records:{design:{steps:['travel'],history:[{steps:'bad'}]}}}),false);
  a.equal(R.completed('manual',{actions:['stop'],reason:'adjust'}),false);
 });
+test('story progress accepts known stages and rejects forged values',()=>{
+ const base={stage:'intro',records:{},completions:{},archives:[]};
+ a.equal(R.validPayload({...base,story:{seen:['intro','manual']}}),true);
+ a.equal(R.validPayload({...base,story:{seen:['unknown']}}),false);
+ a.equal(R.validPayload({...base,story:{seen:'intro'}}),false);
+});
