@@ -92,6 +92,21 @@ function completed(id,r){
  if(id==='assessment')return r.submitted===true&&assessmentResult(r)===3;
  return false;
 }
+function standardRecord(id){
+ if(id==='intro')return {answers:[1,0],submitted:true,first:[1,0]};
+ if(id==='manual'){
+  const actions=['go',...Array(4).fill('tick'),'stop','left','slow','go',...Array(4).fill('tick'),'stop','right','go',...Array(4).fill('tick'),'stop'];
+  const moment=manualMoments(actions).find(m=>m.action==='stop'&&m.situation==='receiver');
+  return {actions,hints:0,keyIndex:moment.index,situation:moment.situation,keyAction:moment.action,outcome:moment.outcome,submitted:true};
+ }
+ if(id==='design')return {steps:['travel','stop','notify'],destination:'library',body:'cart',usage:'set-start',noticeMode:'light',noticeReason:'quiet',tested:true,history:[],hints:0,result:'图书送达、停好，并发出了到达提醒。',first:{steps:['travel','stop','notify'],destination:'library'},revision:'sequence',submitted:true};
+ if(id==='obstacle')return {policy:'wait',history:[{policy:'wait',result:'检测到纸箱，机器人停止等待通道恢复。'}],hints:0,prediction:'blocked',result:'按照设定的规则继续配送，完成送达。',originalTested:true,testedPolicy:'wait',removed:true,resumed:false,arrived:true,reason:'rule',submitted:true};
+ if(id==='assessment'){
+  const attempt={form:0,answers:[1,null,0],repair:['travel','stop','notify']};
+  return {...attempt,submitted:true,first:{...attempt,answers:attempt.answers.slice(),repair:attempt.repair.slice()},history:[{...attempt,answers:attempt.answers.slice(),repair:attempt.repair.slice(),score:3}]};
+ }
+ return null;
+}
 const object=v=>!!v&&typeof v==='object'&&!Array.isArray(v);
 const bool=v=>v===undefined||typeof v==='boolean';
 const text=(v,max=300)=>v===undefined||typeof v==='string'&&v.length<=max;
@@ -133,5 +148,5 @@ function validPayload(p){
  if(p.completions){if(typeof p.completions!=='object'||Array.isArray(p.completions))return false;for(const [id,r]of Object.entries(p.completions))if(!completed(id,r))return false;}
  return true;
 }
-return {stages,path,manual,manualMoments,design,designTimeline,obstacle,questions,score,assessmentResult,assessmentScore,completed,validPayload};
+return {stages,path,manual,manualMoments,design,designTimeline,obstacle,questions,score,assessmentResult,assessmentScore,completed,standardRecord,validPayload};
 });

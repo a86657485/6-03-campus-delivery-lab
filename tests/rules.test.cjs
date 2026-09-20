@@ -46,6 +46,10 @@ test('both obstacle policies require actual arrival before completion',()=>{
  a.equal(R.completed('obstacle',proof),false);a.equal(R.completed('obstacle',{...proof,arrived:true}),true);a.equal(R.completed('obstacle',{...proof,arrived:true,submitted:false}),false);
 });
 test('intro answers remain a draft until submitted',()=>{a.equal(R.completed('intro',{answers:[0,1],submitted:false}),false);a.equal(R.completed('intro',{answers:[0,1],submitted:true}),true)});
+test('teacher test mode has a valid standard record for every required stage',()=>{
+ for(const stage of R.stages){const record=R.standardRecord(stage.id);a.ok(record,'missing '+stage.id);a.equal(R.completed(stage.id,record),true,'invalid '+stage.id);}
+ a.equal(R.standardRecord('unknown'),null);
+});
 test('assessment combines judgment, sequence repair and explanation',()=>{
  const correct={form:0,answers:[1,null,0],repair:['travel','stop','notify'],submitted:true};
  a.equal(R.assessmentResult(correct),3);

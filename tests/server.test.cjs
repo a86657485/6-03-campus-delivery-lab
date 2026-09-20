@@ -12,7 +12,8 @@ test('classroom identity, authorization, isolation, deduplication and persistenc
  ]));
  let child,base,port=0;
  async function start(){
-  child=spawn(process.execPath,['--no-warnings',path.join(__dirname,'../server.cjs')],{env:{...process.env,PORT:String(port),HOST:'127.0.0.1',DATA_DIR:dir,ROSTER_FILE:rosterFile,TEACHER_PASSWORD:'test-only-password'},stdio:'pipe'});
+  const env={...process.env,PORT:String(port),HOST:'127.0.0.1',DATA_DIR:dir,ROSTER_FILE:rosterFile};delete env.TEACHER_PASSWORD;
+  child=spawn(process.execPath,['--no-warnings',path.join(__dirname,'../server.cjs')],{env,stdio:'pipe'});
   await new Promise((resolve,reject)=>{
    let output='',errors='';const timer=setTimeout(()=>reject(Error('Server startup timeout '+errors)),8000);
    child.stderr.on('data',v=>{errors+=v;});
@@ -31,6 +32,7 @@ test('classroom identity, authorization, isolation, deduplication and persistenc
  assert.equal((await api('/api/roster?class=501')).status,400);
  assert.equal((await api('/api/me')).status,401);
  assert.equal((await api('/api/teacher/class?class=601')).status,401);
+ assert.equal((await fetch(base+'/test',{redirect:'manual'})).status,302);
  assert.equal((await api('/api/progress',{sid:'one',eventId:'unauthed',version:0,payload:empty()})).status,401);
  for(const route of ['/roster.json','/runtime/classroom.sqlite','/server.cjs','/package.json','/../roster.json','/%2e%2e/roster.json','/assets/../../roster.json'])assert.equal((await fetch(base+route)).status,404);
  assert.equal((await api('/api/login',{classId:'601',id:'two'})).status,400);
@@ -51,7 +53,9 @@ test('classroom identity, authorization, isolation, deduplication and persistenc
  assert.equal((await api('/api/progress',{...event,eventId:'stale'},a.cookie)).status,409);
  assert.equal((await api('/api/me',undefined,b.cookie)).data.version,0);
  assert.equal((await api('/api/teacher/login',{password:'wrong'})).status,401);
- const teacher=await api('/api/teacher/login',{password:'test-only-password'});assert.match(teacher.cookie,/^delivery_teacher=/);
+ const teacher=await api('/api/teacher/login',{password:'teacher'});assert.match(teacher.cookie,/^delivery_teacher=/);
+ assert.equal(fs.readFileSync(path.join(dir,'teacher-password.txt'),'utf8'),'teacher');
+ assert.equal((await fetch(base+'/test',{headers:{Cookie:teacher.cookie},redirect:'manual'})).status,200);
  assert.equal((await api('/api/teacher/class?class=601',undefined,a.cookie)).status,401);
  let report=await api('/api/teacher/class?class=601',undefined,teacher.cookie);assert.equal(report.data.students.length,3);assert.ok(report.data.students.every(s=>s.class_id==='601'));
  const manual=await api('/api/login',{classId:'601',name:'名单外测试'});

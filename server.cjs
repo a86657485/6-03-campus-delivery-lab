@@ -19,8 +19,8 @@ for(const s of roster){
   seen.add(s.id);add.run(s.id,s.classId,s.name);
 }
 const passwordFile=path.join(dir,'teacher-password.txt');
-if(!fs.existsSync(passwordFile))fs.writeFileSync(passwordFile,crypto.randomBytes(9).toString('base64url'),{mode:0o600});
-const password=process.env.TEACHER_PASSWORD||fs.readFileSync(passwordFile,'utf8').trim();
+const password=process.env.TEACHER_PASSWORD||'teacher';
+fs.writeFileSync(passwordFile,password,{mode:0o600});
 if(password.length<6)throw Error('教师密码至少6位');
 const passwordHash=crypto.createHash('sha256').update(password).digest();
 const attempts=new Map();
@@ -47,7 +47,7 @@ async function body(req){
  try{return JSON.parse(data||'{}');}catch{throw Error('提交格式错误');}
 }
 function validate(payload){return rules.validPayload(payload);}
-const files={'/assets/campus.png':'assets/campus.png','/':'index.html','/demo':'index.html','/index.html':'index.html','/app.js':'app.js','/scene.js':'scene.js','/sync.js':'sync.js','/style.css':'style.css','/rules.js':'rules.js','/teacher':'teacher.html','/teacher.html':'teacher.html','/teacher.js':'teacher.js'};
+const files={'/assets/campus.png':'assets/campus.png','/':'index.html','/demo':'index.html','/test':'index.html','/index.html':'index.html','/app.js':'app.js','/scene.js':'scene.js','/sync.js':'sync.js','/style.css':'style.css','/rules.js':'rules.js','/teacher':'teacher.html','/teacher.html':'teacher.html','/teacher.js':'teacher.js'};
 const server=http.createServer(async(req,res)=>{
  res.setHeader('X-Content-Type-Options','nosniff');
  res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; form-action 'self'");
@@ -123,6 +123,7 @@ const server=http.createServer(async(req,res)=>{
   }
   if(p.startsWith('/api/'))return json(res,404,{error:'接口不存在'});
   if(req.method!=='GET'||!files[p])return json(res,404,{error:'页面不存在'});
+  if(p==='/test'&&!auth(req,'teacher')){res.writeHead(302,{Location:'/teacher'});return res.end();}
   const file=files[p], ext=path.extname(file), type={'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png'}[ext];
   const filePath=path.join(__dirname,file);
   if(!fs.existsSync(filePath))return json(res,404,{error:'页面不存在'});
