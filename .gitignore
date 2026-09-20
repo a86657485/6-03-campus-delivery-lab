@@ -1,0 +1,13 @@
+.DS_Store
+node_modules/
+.env
+.env.*
+*.log
+
+# 真实学生名单及课堂运行数据只保留在教师电脑
+roster.json
+runtime/
+
+# 本地启动时产生的临时文件
+当前访问地址.txt
+

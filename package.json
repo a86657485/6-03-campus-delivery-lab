@@ -1,0 +1,12 @@
+{
+  "name": "campus-delivery-lab",
+  "private": true,
+  "version": "1.0.0",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "start": "node --no-warnings server.cjs",
+    "test": "node --no-warnings --test tests/*.test.cjs"
+  }
+}
