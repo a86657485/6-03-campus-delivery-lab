@@ -10,7 +10,7 @@ test('every required stage has a short immersive story beat',()=>{
 test('story assets are assigned only to speaking characters',()=>{
  const Story=require('../story.js');
  const frames=Rules.stages.flatMap(stage=>Story.get(stage.id).frames);
- assert.ok(frames.some(frame=>frame.asset==='/assets/teacher-lan.png'));
- assert.ok(frames.some(frame=>frame.asset==='/assets/robot-xiaoda.png'));
+ assert.ok(frames.some(frame=>frame.asset==='/assets/teacher-lan-lite.png'));
+ assert.ok(frames.some(frame=>frame.asset==='/assets/robot-xiaoda-lite.png'));
  assert.ok(frames.filter(frame=>frame.role==='system').every(frame=>!frame.asset));
 });

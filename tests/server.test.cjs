@@ -23,6 +23,18 @@ test('classroom identity, authorization, isolation, deduplication and persistenc
  }
  async function stop(){if(child&&child.exitCode===null)await new Promise(resolve=>{child.once('exit',resolve);child.kill();});}
  t.after(async()=>{await stop();fs.rmSync(dir,{recursive:true,force:true});});await start();
+ const mapResponse=await fetch(base+'/assets/campus-lite.jpg');
+ assert.equal(mapResponse.status,200);
+ assert.equal(mapResponse.headers.get('content-type'),'image/jpeg');
+ assert.match(mapResponse.headers.get('cache-control'),/max-age=3600/);
+ assert.ok(Number(mapResponse.headers.get('content-length'))<250000);
+ const tag=mapResponse.headers.get('etag');
+ assert.equal((await fetch(base+'/assets/campus-lite.jpg',{headers:{'If-None-Match':tag}})).status,304);
+ assert.equal((await fetch(base+'/assets/campus-lite.jpg',{headers:{'If-None-Match':'"outdated"'}})).status,200);
+ const head=await fetch(base+'/assets/campus-lite.jpg',{method:'HEAD'});
+ assert.equal(head.status,200);assert.equal(await head.text(),'');
+ assert.equal((await fetch(base+'/')).headers.get('cache-control'),'no-store');
+ assert.equal((await fetch(base+'/app.js')).headers.get('cache-control'),'no-cache');
  async function api(route,body,cookie=''){
   const res=await fetch(base+route,{method:body===undefined?'GET':'POST',headers:{'Content-Type':'application/json',Cookie:cookie},...(body===undefined?{}:{body:JSON.stringify(body)})});
   return {status:res.status,data:await res.json(),cookie:res.headers.get('set-cookie')?.split(';')[0]};

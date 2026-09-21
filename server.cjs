@@ -47,7 +47,7 @@ async function body(req){
  try{return JSON.parse(data||'{}');}catch{throw Error('提交格式错误');}
 }
 function validate(payload){return rules.validPayload(payload);}
-const files={'/assets/campus.png':'assets/campus.png','/assets/teacher-lan.png':'assets/teacher-lan.png','/assets/robot-xiaoda.png':'assets/robot-xiaoda.png','/':'index.html','/demo':'index.html','/test':'index.html','/index.html':'index.html','/app.js':'app.js','/story.js':'story.js','/scene.js':'scene.js','/sync.js':'sync.js','/style.css':'style.css','/rules.js':'rules.js','/teacher':'teacher.html','/teacher.html':'teacher.html','/teacher.js':'teacher.js'};
+const files={'/assets/campus-lite.jpg':'assets/campus-lite.jpg','/assets/teacher-lan-lite.png':'assets/teacher-lan-lite.png','/assets/robot-xiaoda-lite.png':'assets/robot-xiaoda-lite.png','/assets/campus.png':'assets/campus.png','/assets/teacher-lan.png':'assets/teacher-lan.png','/assets/robot-xiaoda.png':'assets/robot-xiaoda.png','/':'index.html','/demo':'index.html','/test':'index.html','/index.html':'index.html','/app.js':'app.js','/story.js':'story.js','/scene.js':'scene.js','/sync.js':'sync.js','/style.css':'style.css','/rules.js':'rules.js','/teacher':'teacher.html','/teacher.html':'teacher.html','/teacher.js':'teacher.js'};
 const server=http.createServer(async(req,res)=>{
  res.setHeader('X-Content-Type-Options','nosniff');
  res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; form-action 'self'");
@@ -122,12 +122,18 @@ const server=http.createServer(async(req,res)=>{
    return json(res,200,{classId:cls,at:Date.now(),students});
   }
   if(p.startsWith('/api/'))return json(res,404,{error:'接口不存在'});
-  if(req.method!=='GET'||!files[p])return json(res,404,{error:'页面不存在'});
+  if(!['GET','HEAD'].includes(req.method)||!files[p])return json(res,404,{error:'页面不存在'});
   if(p==='/test'&&!auth(req,'teacher')){res.writeHead(302,{Location:'/teacher'});return res.end();}
-  const file=files[p], ext=path.extname(file), type={'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png'}[ext];
+  const file=files[p], ext=path.extname(file), type={'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png','.jpg':'image/jpeg'}[ext];
   const filePath=path.join(__dirname,file);
   if(!fs.existsSync(filePath))return json(res,404,{error:'页面不存在'});
-  res.writeHead(200,{'Content-Type':type+'; charset=utf-8','Cache-Control':'no-store'});fs.createReadStream(filePath).on('error',()=>res.destroy()).pipe(res);
+  const stat=fs.statSync(filePath), etag='W/"'+stat.size+'-'+stat.mtimeMs+'"';
+  const isImage=type.startsWith('image/'), isPage=ext==='.html';
+  const headers={'Content-Type':type+(isImage?'':'; charset=utf-8'),'Cache-Control':isPage?'no-store':isImage?'public, max-age=3600':'no-cache','ETag':etag};
+  if(!isPage&&req.headers['if-none-match']===etag){res.writeHead(304,headers);return res.end();}
+  res.writeHead(200,{...headers,'Content-Length':stat.size});
+  if(req.method==='HEAD')return res.end();
+  fs.createReadStream(filePath).on('error',()=>res.destroy()).pipe(res);
  }catch(e){console.error('Request failed:',e.message);if(!res.headersSent)json(res,400,{error:'请求未保存，请检查连接或提交内容后重试'});else res.end();}
 });
 const port=Number(process.env.PORT||8784),host=process.env.HOST||'0.0.0.0';

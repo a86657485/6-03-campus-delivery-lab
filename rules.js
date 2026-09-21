@@ -13,7 +13,7 @@ function manual(actions){
   if(a==='tick'&&s.moving){const d=[[1,0],[0,1],[-1,0],[0,-1]][s.dir],x=s.x+d[0],y=s.y+d[1];
    if(path.some(p=>p[0]===x&&p[1]===y)||x===11&&y===3){s.x=x;s.y=y;s.trace.push([x,y]);}else{s.moving=false;s.collision=true;}}
  }
- s.arrived=s.x===10&&s.y===3&&!s.moving&&actions.at(-1)==='stop';return s;
+ s.arrived=s.x===10&&s.y===3&&!s.moving&&actions[actions.length-1]==='stop';return s;
 }
 function manualMoments(actions){
  if(!Array.isArray(actions)||!manual(actions))return [];
@@ -80,7 +80,7 @@ function assessmentResult(record){
 }
 function assessmentScore(record,which='latest'){
  if(!record||typeof record!=='object')return null;
- const attempt=which==='first'?record.first:record.history?.at(-1);
+ const attempt=which==='first'?record.first:record.history?.[record.history.length-1];
  return attempt&&[0,1].includes(attempt.form)&&Array.isArray(attempt.answers)?assessmentResult(attempt):null;
 }
 function completed(id,r){
