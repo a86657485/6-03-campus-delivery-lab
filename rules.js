@@ -1,6 +1,9 @@
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.Rules=api;})(typeof window==='object'?window:this,function(){
 'use strict';
-const stages=[{id:'intro',title:'领取配送任务',points:5},{id:'manual',title:'我来控制',points:20},{id:'design',title:'机器人接手',points:25},{id:'obstacle',title:'应对新情况',points:25},{id:'assessment',title:'独立检验',points:10}];
+const Quiz=typeof module==='object'&&module.exports?require('./quiz-bank.js'):window.QuizBank;
+const Program=typeof module==='object'&&module.exports?require('./program.js'):window.Program;
+const Sheet=typeof module==='object'&&module.exports?require('./robot-sheet.js'):window.RobotSheet;
+const stages=[{id:'intro',title:'领取配送任务',points:5},{id:'manual',title:'我来控制',points:20},{id:'design',title:'机器人接手',points:25},{id:'obstacle',title:'应对新情况',points:25},{id:'program',title:'编写控制指令',points:25},{id:'assessment',title:'独立检验',points:10},{id:'robot',title:'设计送书机器人',points:20}];
 const path=[[2,7],[3,7],[4,7],[5,7],[6,7],[6,6],[6,5],[6,4],[6,3],[7,3],[8,3],[9,3],[10,3]];
 const allowedActions=['go','stop','left','right','slow','normal','tick'];
 function manual(actions){
@@ -75,9 +78,13 @@ const answers=[[1,2,0],[2,0,1]];
 function score(a,form=0){return Array.isArray(a)&&answers[form]?answers[form].reduce((n,v,i)=>n+(a[i]===v),0):0;}
 function assessmentResult(record){
  if(!record||![0,1].includes(record.form)||!Array.isArray(record.answers))return 0;
+ if(record.answers.length===Quiz.count)return Quiz.score(record.form,record.answers);
+ if(record.answers.length!==3)return 0;
  const repair=Array.isArray(record.repair)&&record.repair.join(',')==='travel,stop,notify';
  return Number(record.answers[0]===answers[record.form][0])+Number(repair)+Number(record.answers[2]===answers[record.form][2]);
 }
+function assessmentTotal(record){return record?.answers?.length===Quiz.count?Quiz.count:3;}
+function obstacleNext(r){if(!r?.originalTested)return 'test-original';if(!['wait','help'].includes(r.policy)||r.testedPolicy!==r.policy)return 'test-rule';if(!r.removed)return 'remove-box';if(r.policy==='help'&&!r.resumed)return 'confirm-resume';if(!r.arrived)return 'finish-delivery';if(r.reason!=='rule')return 'explain';return 'ready';}
 function assessmentScore(record,which='latest'){
  if(!record||typeof record!=='object')return null;
  const attempt=which==='first'?record.first:record.history?.[record.history.length-1];
@@ -89,7 +96,9 @@ function completed(id,r){
  if(id==='manual'){const s=manual(r.actions),moment=manualMoments(r.actions).find(m=>m.index===r.keyIndex);return r.submitted===true&&!!s?.arrived&&s.turns>=2&&!!moment&&moment.action===r.keyAction&&moment.situation===r.situation&&moment.outcome===r.outcome;}
  if(id==='design'){const noticeMatches=r.noticeMode==='light'&&r.noticeReason==='quiet'||r.noticeMode==='sound'&&r.noticeReason==='hear';return r.submitted===true&&!!r.tested&&design(r).ok&&['cart','box'].includes(r.body)&&r.usage==='set-start'&&noticeMatches&&['first','stop','notify','destination','sequence'].includes(r.revision);}
  if(id==='obstacle')return r.submitted===true&&!!r.originalTested&&['blocked','continue','detour'].includes(r.prediction)&&['wait','help'].includes(r.policy)&&r.testedPolicy===r.policy&&r.removed===true&&r.arrived===true&&obstacle(r.policy,r.removed,r.resumed).status==='delivered'&&r.reason==='rule';
- if(id==='assessment')return r.submitted===true&&assessmentResult(r)===3;
+ if(id==='program'){const result=Program.run(r.code);return r.submitted===true&&result?.success===true&&r.explanation==='control'&&Array.isArray(r.history)&&r.history.length>=2&&r.history.some(h=>h.code.join(',')!==r.code.join(','))&&r.history.some(h=>h.code.join(',')===r.code.join(',')&&Program.run(h.code)?.success);}
+ if(id==='assessment')return r.submitted===true&&(r.answers?.length===Quiz.count&&r.answers.every(x=>Number.isInteger(x)&&x>=0&&x<=2)||r.answers?.length===3&&assessmentResult(r)===3);
+ if(id==='robot')return r.submitted===true&&Sheet.complete(r.sheet,r.body);
  return false;
 }
 function standardRecord(id){
@@ -101,10 +110,15 @@ function standardRecord(id){
  }
  if(id==='design')return {steps:['travel','stop','notify'],destination:'library',body:'cart',usage:'set-start',noticeMode:'light',noticeReason:'quiet',tested:true,history:[],hints:0,result:'图书送达、停好，并发出了到达提醒。',first:{steps:['travel','stop','notify'],destination:'library'},revision:'sequence',submitted:true};
  if(id==='obstacle')return {policy:'wait',history:[{policy:'wait',result:'检测到纸箱，机器人停止等待通道恢复。'}],hints:0,prediction:'blocked',result:'按照设定的规则继续配送，完成送达。',originalTested:true,testedPolicy:'wait',removed:true,resumed:false,arrived:true,reason:'rule',submitted:true};
- if(id==='assessment'){
-  const attempt={form:0,answers:[1,null,0],repair:['travel','stop','notify']};
-  return {...attempt,submitted:true,first:{...attempt,answers:attempt.answers.slice(),repair:attempt.repair.slice()},history:[{...attempt,answers:attempt.answers.slice(),repair:attempt.repair.slice(),score:3}]};
+ if(id==='program'){
+  const first=[...Array(5).fill('forward')],code=[...Array(4).fill('forward'),'left',...Array(4).fill('forward'),'right',...Array(4).fill('forward'),'stop','notify'];
+  return {code,first,prediction:'delivered',history:[{code:first,prediction:'wall',result:'wall',errorAt:4},{code,prediction:'delivered',result:'success',errorAt:-1}],explanation:'control',submitted:true};
  }
+ if(id==='assessment'){
+  const attempt={form:0,answers:Quiz.form(0).map(q=>q.answer)};
+  return {...attempt,submitted:true,first:{...attempt,answers:attempt.answers.slice()},history:[{...attempt,answers:attempt.answers.slice(),score:Quiz.count}]};
+ }
+ if(id==='robot')return {body:'cart',sheet:Sheet.example(),submitted:true};
  return null;
 }
 const object=v=>!!v&&typeof v==='object'&&!Array.isArray(v);
@@ -114,8 +128,9 @@ const oneOf=(v,values)=>v===undefined||values.includes(v);
 const onlyKeys=(v,keys)=>Object.keys(v).every(k=>keys.includes(k));
 const answersValid=(v,length,max,complete=false)=>Array.isArray(v)&&v.length<=(length)&&(!complete||v.length===length)&&v.every(x=>x===null&&!complete||Number.isInteger(x)&&x>=0&&x<=max);
 const stepsValid=v=>Array.isArray(v)&&v.length<=3&&new Set(v).size===v.length&&v.every(x=>['travel','stop','notify'].includes(x));
-const assessmentAnswersValid=(v,complete=false)=>Array.isArray(v)&&v.length===3&&v[1]===null&&[0,2].every(i=>complete?Number.isInteger(v[i])&&v[i]>=0&&v[i]<=2:v[i]===null||Number.isInteger(v[i])&&v[i]>=0&&v[i]<=2);
-function attemptValid(v){return object(v)&&onlyKeys(v,['form','answers','repair','score'])&&[0,1].includes(v.form)&&assessmentAnswersValid(v.answers,true)&&stepsValid(v.repair)&&(v.score===undefined||v.score===assessmentResult(v));}
+const assessmentAnswersValid=(v,complete=false)=>Array.isArray(v)&&(v.length===Quiz.count&&v.every(x=>complete?Number.isInteger(x)&&x>=0&&x<=2:x===null||Number.isInteger(x)&&x>=0&&x<=2)||v.length===3&&v[1]===null&&[0,2].every(i=>complete?Number.isInteger(v[i])&&v[i]>=0&&v[i]<=2:v[i]===null||Number.isInteger(v[i])&&v[i]>=0&&v[i]<=2));
+function attemptValid(v){return object(v)&&onlyKeys(v,['form','answers','repair','score'])&&[0,1].includes(v.form)&&assessmentAnswersValid(v.answers,true)&&(v.answers.length===Quiz.count?v.repair===undefined:stepsValid(v.repair))&&(v.score===undefined||v.score===assessmentResult(v));}
+function programRunValid(h){if(!object(h)||!onlyKeys(h,['code','prediction','result','errorAt'])||!Program.valid(h.code)||!oneOf(h.prediction,['delivered','wall','incomplete']))return false;const result=Program.run(h.code);return h.result===(result.success?'success':result.error)&&h.errorAt===result.errorAt;}
 function designSnapshotValid(v){return object(v)&&onlyKeys(v,['steps','destination'])&&stepsValid(v.steps)&&['','library','equipment'].includes(v.destination);}
 function validRecord(id,r){
  if(!object(r))return false;
@@ -133,7 +148,9 @@ function validRecord(id,r){
   if(r.hints!==undefined&&(!Number.isInteger(r.hints)||r.hints<0||r.hints>3))return false;
   return r.history===undefined||Array.isArray(r.history)&&r.history.length<=12&&r.history.every(h=>object(h)&&onlyKeys(h,['policy','result'])&&['wait','help'].includes(h.policy)&&text(h.result,300));
  }
+ if(id==='program')return onlyKeys(r,['code','first','prediction','history','explanation','submitted'])&&(!r.code||Program.valid(r.code))&&(r.first===undefined||Program.valid(r.first))&&oneOf(r.prediction,['','delivered','wall','incomplete'])&&oneOf(r.explanation,['','control','power','shape'])&&bool(r.submitted)&&(r.history===undefined||Array.isArray(r.history)&&r.history.length<=12&&r.history.every(programRunValid));
  if(id==='assessment')return onlyKeys(r,['form','answers','repair','submitted','first','history'])&&oneOf(r.form,[0,1])&&(!r.answers||assessmentAnswersValid(r.answers))&&(r.repair===undefined||stepsValid(r.repair))&&bool(r.submitted)&&(r.first===undefined||attemptValid(r.first))&&(r.history===undefined||Array.isArray(r.history)&&r.history.length<=12&&r.history.every(attemptValid));
+ if(id==='robot')return onlyKeys(r,['body','sheet','submitted'])&&oneOf(r.body,['cart','box','humanoid','other'])&&(r.sheet===undefined||Sheet.valid(r.sheet))&&bool(r.submitted);
  if(id==='parameter')return onlyKeys(r,['distance','speed','trials'])&&oneOf(r.distance,[2,4,6,8])&&oneOf(r.speed,[1,2])&&(r.trials===undefined||Array.isArray(r.trials)&&r.trials.length<=12&&r.trials.every(t=>object(t)&&onlyKeys(t,['distance','speed','time','prediction'])&&[2,4,6,8].includes(t.distance)&&[1,2].includes(t.speed)&&t.time===t.distance/t.speed&&['first','less','same','more'].includes(t.prediction)));
  return false;
 }
@@ -149,5 +166,5 @@ function validPayload(p){
  if(p.completions){if(typeof p.completions!=='object'||Array.isArray(p.completions))return false;for(const [id,r]of Object.entries(p.completions))if(!completed(id,r))return false;}
  return true;
 }
-return {stages,path,manual,manualMoments,design,designTimeline,obstacle,questions,score,assessmentResult,assessmentScore,completed,standardRecord,validPayload};
+return {stages,path,manual,manualMoments,design,designTimeline,obstacle,obstacleNext,questions,score,assessmentResult,assessmentTotal,assessmentScore,completed,standardRecord,validPayload};
 });

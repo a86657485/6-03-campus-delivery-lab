@@ -16,10 +16,15 @@ const beats={
   {role:'system',speaker:'校园调度终端',tag:'通道变化',text:'保洁人员在走廊中临时放下了一个整理箱。目的地没变，但原来的配送条件已经改变。'},
   {role:'robot',speaker:'小达',asset:'/assets/robot-xiaoda-lite.png',text:'前方通道被占用。碰撞保护让我停了下来，但现有方案没有告诉我接下来怎样做。'},
   {role:'teacher',speaker:'岚老师',asset:'/assets/teacher-lan-lite.png',text:'请先预测原方案的结果，再给小达补充它真正能执行的遇障碍规则。'}]},
- assessment:{chapter:'终幕',title:'第二张配送单',time:'08:36',countdown:'距阅读节开始 4 分钟',cta:'开始最终配送验收',frames:[
-  {role:'system',speaker:'校园调度终端',tag:'新任务',text:'第一箱新书已送达。新的配送单中留下了一组有错误的控制记录，需要你完成验收。'},
-  {role:'teacher',speaker:'岚老师',asset:'/assets/teacher-lan-lite.png',text:'这次不会给你原路线的答案。请判断新现象、修复任务顺序，再说清规则为什么这样执行。'},
-  {role:'robot',speaker:'小达',asset:'/assets/robot-xiaoda-lite.png',text:'完成这次验收后，我们就能把“启动”、“控制过程”和“完成任务”真正区分开。'}]}
+ program:{chapter:'第四幕',title:'写给小达的指令',time:'08:34',countdown:'控制模块调试中',cta:'打开指令编辑台',frames:[
+  {role:'system',speaker:'校园调度终端',tag:'控制模块就绪',text:'小达需要一串能逐步执行的指令。先观察已有程序的结果，再修正方向、停止和提醒。'},
+  {role:'robot',speaker:'小达',asset:'/assets/robot-xiaoda-lite.png',text:'请把前面亲自控制车的经验写成指令。我会逐条执行，并在出错的那一步停下来。'}]},
+ assessment:{chapter:'第六环',title:'控制员独立验收',time:'08:37',countdown:'新配送任务待验收',cta:'开始20题情境考核',frames:[
+  {role:'system',speaker:'校园调度终端',tag:'独立检验',text:'新的配送记录涉及启动、转向、停止、提醒和遇障碍。请完成20道情境题，留下自己的判断。'},
+  {role:'teacher',speaker:'岚老师',asset:'/assets/teacher-lan-lite.png',text:'做错可以查看反馈并换一组情境重试。考核分数与闯关积分分开记录。'}]},
+ robot:{chapter:'第七环',title:'设计我们的送书机器人',time:'08:40',countdown:'阅读节配送完成',cta:'开始设计作品',frames:[
+  {role:'robot',speaker:'小达',asset:'/assets/robot-xiaoda-lite.png',text:'你已经体验过人工控制、任务规则和程序调试。现在请为下一次校园送书设计我的外形与三项自动功能。'},
+  {role:'teacher',speaker:'岚老师',asset:'/assets/teacher-lan-lite.png',text:'写清每项功能怎样使用，以及内部是否有指令指挥。创意功能可以提出，但要标明哪些还没有经过仿真验证。'}]}
 };
 return {get:id=>beats[id]||null,stages:Object.keys(beats)};
 });

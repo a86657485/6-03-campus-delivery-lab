@@ -8,3 +8,31 @@
 /* Keep the route usable while the optional photograph loads. */
 .scene .map-fallback,.scene .map-background{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:contain;pointer-events:none}.scene .map-overlay{position:relative}.scene .map-fallback{background:#e3e8df}.scene-note{z-index:1}
 .file-warning{display:none}
+/* Course expansion: keep controls and simulation readable on lab monitors. */
+.program-palette,.quiz-pages{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 16px}
+.program-palette button{flex:1 1 130px}
+.program-list{max-height:300px;overflow-y:auto;scrollbar-gutter:stable}
+.program-list li.program-error{background:#fff0df;outline:2px solid #cf8048}
+.quiz-toolbar{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;background:#eff4ea;border:1px solid #d8e1d8;border-radius:12px;padding:13px 15px;margin:14px 0}
+.quiz-pages{margin:0}
+.quiz-pages button{padding:7px 10px;font-size:12px}
+.robot-grid>div:first-child{position:sticky;top:12px;align-self:start}.robot-preview{text-align:center;min-height:500px;background:linear-gradient(160deg,#f4f8f0,#e2ede3)}
+.robot-body{height:240px;width:170px;margin:12px auto 24px;position:relative;filter:drop-shadow(0 15px 15px #203d2b33)}
+.robot-core{position:absolute;left:25px;top:90px;width:120px;height:106px;border:4px solid #557e6b;border-radius:20px;background:linear-gradient(135deg,#e7f1e8,#9dbbac);display:grid;place-items:center;font-weight:800;color:#315947;font-size:24px;box-shadow:inset 0 6px 14px #fff9}
+.robot-head{position:absolute;left:52px;top:20px;width:66px;height:65px;border-radius:18px;background:#dcf0e8;border:4px solid #557e6b}
+.robot-head:before,.robot-head:after{content:"";position:absolute;top:25px;width:9px;height:9px;background:#246b54;border-radius:50%}
+.robot-head:before{left:15px}.robot-head:after{right:15px}
+.robot-wheels{position:absolute;top:185px;left:24px;width:122px;display:flex;justify-content:space-between}
+.robot-wheels i{display:block;width:30px;height:34px;border-radius:9px;background:#3b5850;border:4px solid #8aa89a}
+.robot-body.box .robot-head{display:none}.robot-body.box .robot-core{top:54px;height:140px;border-radius:12px}
+.robot-body.humanoid .robot-core{width:100px;left:35px}.robot-body.humanoid .robot-wheels{top:196px}
+.robot-modules{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;text-align:left}
+.robot-module{min-height:82px;border:2px dashed #a7b9ad;border-radius:12px;padding:9px;background:#f8faf7;display:grid;align-content:center;gap:3px;opacity:.65}
+.robot-module span{font-size:11px}.robot-module b{font-size:12px;line-height:1.35}
+.robot-module.installed{border-style:solid;border-color:#5c9277;background:#e1f2e4;opacity:1}
+.robot-module.upgrade-pulse{animation:module-install .65s cubic-bezier(.2,.8,.2,1) both}
+@keyframes module-install{0%{transform:translateY(-18px) scale(.82);opacity:.2;box-shadow:0 0 0 0 #65b883aa}65%{transform:translateY(3px) scale(1.05);opacity:1;box-shadow:0 0 0 10px #65b88333}100%{transform:none;box-shadow:none}}
+.robot-sheet{margin-bottom:14px;text-align:left}.robot-sheet .sheet-rows{display:grid;gap:12px}
+.sheet-row{border:1px solid #d8e1d8;padding:12px;border-radius:11px;background:#fbfdf9}
+@media(max-width:1050px){.robot-grid>div:first-child{position:static}.robot-modules{grid-template-columns:1fr}.robot-preview{min-height:unset}}
+@media(prefers-reduced-motion:reduce){.robot-module.upgrade-pulse{animation:none!important}.story-character{animation:none!important}}
