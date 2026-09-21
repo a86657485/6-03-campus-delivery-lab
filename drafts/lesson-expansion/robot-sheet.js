@@ -1,0 +1,25 @@
+(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.RobotSheet=api;})(typeof window==='object'?window:this,function(){
+'use strict';
+const functions={
+ deliver:{title:'按目的地自动送书',use:'放好图书，选择阅览室，按下启动',scope:'本课可验证'},
+ stop:{title:'到达接收区自动停下',use:'设置到站停止任务，启动后观察停靠位置',scope:'本课可验证'},
+ notify:{title:'送达后自动提醒',use:'选择提示灯或提示音，设置在停好后提醒',scope:'本课可验证'},
+ obstacle:{title:'遇到障碍停止等待或求助',use:'设置遇障碍规则，测试通道恢复后的动作',scope:'下一幕可验证'},
+ return:{title:'取书后自动返回',use:'管理员取走图书并确认，机器人返回收发室',scope:'创意设想，尚未仿真'},
+ elevator:{title:'自动乘坐电梯',use:'选择楼层与目的地，确认后启动配送',scope:'创意设想，尚未仿真'},
+ custom:{title:'我的其他功能',use:'',scope:'创意设想，交老师讨论'}
+};
+const shapes={cart:'一辆小车',box:'带轮子的箱子',humanoid:'人形机器人',other:'其他创意外形'};
+const escape=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function empty(){return {otherShape:'',functions:[{kind:'',custom:'',use:''},{kind:'',custom:'',use:''},{kind:'',custom:'',use:''}],instructions:'',instructionExample:''};}
+function example(){return {otherShape:'',functions:['deliver','stop','notify'].map(kind=>({kind,custom:'',use:functions[kind].use})),instructions:'yes',instructionExample:'到达阅览室后先停下，再亮灯提醒管理员。'};}
+function valid(s){return !!s&&typeof s==='object'&&!Array.isArray(s)&&Object.keys(s).every(k=>['otherShape','functions','instructions','instructionExample'].includes(k))&&typeof s.otherShape==='string'&&s.otherShape.length<=100&&['','yes','no','unsure'].includes(s.instructions)&&typeof s.instructionExample==='string'&&s.instructionExample.length<=300&&Array.isArray(s.functions)&&s.functions.length===3&&s.functions.every(f=>!!f&&typeof f==='object'&&Object.keys(f).every(k=>['kind','custom','use'].includes(k))&&(f.kind===''||Object.hasOwn(functions,f.kind))&&typeof f.custom==='string'&&f.custom.length<=100&&typeof f.use==='string'&&f.use.length<=200);}
+function complete(s,shape){return valid(s)&&Object.hasOwn(shapes,shape)&&(shape!=='other'||!!s.otherShape.trim())&&s.functions.every(f=>!!f.kind&&(f.kind!=='custom'||!!f.custom.trim())&&!!f.use.trim())&&!!s.instructions&&!!s.instructionExample.trim();}
+function render(s,shape,readOnly=false){
+ if(!valid(s))return '<p class="muted">旧版记录尚未填写设计表。</p>';
+ const e=escape;
+ if(readOnly)return '<section class="sheet-summary"><h3>送书机器人设计表</h3><p><b>外形：</b>'+e(shapes[shape])+(shape==='other'?' · '+e(s.otherShape):'')+'</p><ol>'+s.functions.map(f=>'<li><b>'+e(f.kind==='custom'?f.custom:functions[f.kind]?.title||'未选择')+'</b><p>使用方法：'+e(f.use||'未填写')+'</p><small>'+e(functions[f.kind]?.scope||'')+'</small></li>').join('')+'</ol><p><b>内部有指令吗：</b>'+e({yes:'有',no:'没有',unsure:'还不确定','':'未回答'}[s.instructions])+'</p><p><b>例子与解释：</b>'+e(s.instructionExample)+'</p><p class="mini-label">创意与表达由教师结合设计和测试评价；填写完整不等于语义正确。</p></section>';
+ return '<section class="panel robot-sheet" id="robotDesignSheet"><div class="eyebrow">我的设计作品 · 参考教材第21页</div><h3>设计一台校园送书机器人</h3><p>把刚才由人完成的控制交给机器人。先想功能和用法，再用下方仿真验证“送达—停好—提醒”。</p><label for="sheetShape">机器人外形</label><select id="sheetShape">'+Object.entries(shapes).map(([v,t])=>'<option value="'+v+'" '+(shape===v?'selected':'')+'>'+t+'</option>').join('')+'</select>'+(shape==='other'?'<label for="otherShape">我设计的外形</label><input id="otherShape" data-sheet="otherShape" maxlength="100" value="'+e(s.otherShape)+'" placeholder="用一句话说明外形如何方便装书或移动">':'')+'<div class="sheet-rows">'+s.functions.map((f,i)=>'<div class="sheet-row"><label for="function-'+i+'">自动功能 '+(i+1)+'</label><select id="function-'+i+'" data-function="'+i+'"><option value="">选择功能或提出自己的想法</option>'+Object.entries(functions).map(([v,t])=>'<option value="'+v+'" '+(f.kind===v?'selected':'')+'>'+t.title+'</option>').join('')+'</select>'+(f.kind==='custom'?'<label for="custom-'+i+'">我的功能想法</label><input id="custom-'+i+'" data-custom="'+i+'" maxlength="100" value="'+e(f.custom)+'">':'')+'<label for="use-'+i+'">功能 '+(i+1)+' 的使用方法</label><textarea id="use-'+i+'" data-use="'+i+'" maxlength="200" placeholder="人需要先做什么、怎样启动或设置这项功能？">'+e(f.use)+'</textarea>'+(f.kind&&f.kind!=='custom'?'<button type="button" data-use-example="'+i+'">参考一种使用方法</button>':'')+'<small>'+e(functions[f.kind]?.scope||'功能要回应送书过程中的实际需要')+'</small></div>').join('')+'</div><label for="internalInstructions">机器人工作时，内部有指令在指挥它吗？</label><select id="internalInstructions" data-sheet="instructions"><option value="">先表达你的想法</option>'+[['yes','有'],['no','没有'],['unsure','还不确定']].map(([v,t])=>'<option value="'+v+'" '+(s.instructions===v?'selected':'')+'>'+t+'</option>').join('')+'</select><label for="instructionExample">结合一个功能，说说你的理由或一条指令</label><textarea id="instructionExample" data-sheet="instructionExample" maxlength="300" placeholder="例如：在什么情况下，机器人要做什么？">'+e(s.instructionExample)+'</textarea><p class="mini-label">这部分保留你的想法，老师会从创意和表达两方面评价。自行设计的外形用下方通用底盘验证，仿真未实现的功能会明确标记。</p><p id="sheetSaveStatus" role="status" class="mini-label">设计会随学习记录保存，允许先保存未完成作品。</p></section>';
+}
+return {empty,example,valid,complete,render,functions,shapes};
+});

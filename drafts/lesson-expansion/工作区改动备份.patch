@@ -1,0 +1,163 @@
+diff --git a/app.js b/app.js
+index ce9ff59..b470548 100644
+--- a/app.js
++++ b/app.js
+@@ -3,9 +3,20 @@ const $=s=>document.querySelector(s),R=Rules;
+ const app=$('#app'),testMode=location.pathname==='/test',demo=location.pathname==='/demo'||testMode;
+ let student=null,p={stage:'intro',records:{},completions:{},archives:[],story:{seen:[]}},points=0,syncText='等待登录',syncKind='',autoTimer=null,autoPaused=false,autoFrame=null,view='intro',storyActive=false,storyIndex=0,lastTick=0,loginRoster=[],selectedId='',loginClass='601',manualEntry=false;
+ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+-const clone=x=>structuredClone(x),names={travel:'前往目的地',stop:'到站停止',notify:'发出到达提醒'};
++const clone=x=>JSON.parse(JSON.stringify(x)),names={travel:'前往目的地',stop:'到站停止',notify:'发出到达提醒'};
+ const actionNames={go:'开始前进',stop:'停下',left:'向左转',right:'向右转',slow:'调整为慢速',normal:'调整为常速',tick:'继续行进'};
+ const situationNames={corner:'我看见小车来到转角',receiver:'我看见小车进入接收区','need-observe':'我需要更清楚地观察位置'},outcomeNames={'new-direction':'结果：小车沿新方向前进','stopped-target':'结果：小车停在接收位置','speed-changed':'结果：移动快慢改变'};
++const baseDesignView=design;
++design=function(){
++ const r=record('design');r.sheet||=RobotSheet.empty();
++ return baseDesignView()
++  .replace('<div class="experiment-grid">',RobotSheet.render(r.sheet,r.body)+'<div class="experiment-grid">')
++  .replace('放手之后，机器人凭什么完成配送？','设计我们的校园送书机器人')
++  .replace('设计使用方法和配送任务，运行后检查是否满足需求。','把亲自控制车的经验变成外形、自动功能、使用方法和内部指令，再用仿真验证。')
++  .replace('<label for="robotBody">外形设计</label>','<label for="robotBody">仿真外形预览（跟随设计表）</label>')
++  .replace('<select id="robotBody">','<select id="robotBody" disabled>')
++  .replace('</select></div><div><label for="usage">管理员怎样使用？</label>','<option value="humanoid" '+(r.body==='humanoid'?'selected':'')+'>人形机器人</option><option value="other" '+(r.body==='other'?'selected':'')+'>其他创意外形（通用底盘验证）</option></select></div><div><label for="usage">仿真启动方法（仅用于验证）</label>');
++};
+ function toast(t){$('#toast').textContent=t;$('#toast').classList.add('visible');setTimeout(()=>$('#toast').classList.remove('visible'),3500);}
+ function record(id){if(!p.records[id])p.records[id]=id==='manual'?{actions:[],hints:0}:id==='design'?{steps:[],destination:'',body:'cart',usage:'',tested:false,history:[],hints:0}:id==='obstacle'?{policy:'',history:[],hints:0}:{};return p.records[id];}
+ function storyState(){p.story||={seen:[]};p.story.seen||=[];return p.story;}
+@@ -79,16 +90,16 @@ async function action(name,b){
+  if(name==='obstacle-submit'){if(autoTimer){toast('请等本次验证完成。');return;}const r=record('obstacle');r.submitted=true;if(!complete('obstacle')){save();render();toast('需要完成原方案测试、新规则测试，以及真正送达后的验证，再解释规则的作用。');}return;}
+  if(name==='assessment-submit'){const r=record('assessment');r.submitted=true;const attempt={answers:clone(r.answers),repair:clone(r.repair),form:r.form};r.first??=clone(attempt);r.history||=[];r.history.push({...attempt,score:R.assessmentResult(attempt)});r.history=r.history.slice(-12);save();if(!complete('assessment'))render();return;}
+  if(name==='assessment-retry'){const r=record('assessment');r.form=1-r.form;r.answers=[null,null,null];r.repair=['travel','notify','stop'];r.submitted=false;save();render();return;}
+- if(name==='parameter-run'){const r=record('parameter'),prediction=$('#paramPrediction').value;if(!prediction){toast('先留下你的预测');return;}if(autoTimer)return;const trial={distance:r.distance,speed:r.speed,time:r.distance/r.speed,prediction};let t=0;$('#parameterFeedback').textContent='正在验证，请观察…';autoTimer=setInterval(()=>{t+=.1;const el=$('#paramCar');if(el)el.style.left=Math.min(90,t*trial.speed/8*90)+'%';if(t>=trial.time){stopAnimation();const prev=r.trials.at(-1);r.trials.push(trial);r.trials=r.trials.slice(-12);save();render();$('#parameterFeedback').textContent=prev?(prev.distance!==trial.distance&&prev.speed!==trial.speed?'距离和速度都改变了，不能单独判断某个参数的作用。':'本次用时 '+trial.time+' 秒。比较表格，说明你保持了什么、改变了什么。'):'本次用时 '+trial.time+' 秒。下一次保持一个参数不变再比较。';}},100);return;}
++ if(name==='parameter-run'){const r=record('parameter'),prediction=$('#paramPrediction').value;if(!prediction){toast('先留下你的预测');return;}if(autoTimer)return;const trial={distance:r.distance,speed:r.speed,time:r.distance/r.speed,prediction};let t=0;$('#parameterFeedback').textContent='正在验证，请观察…';autoTimer=setInterval(()=>{t+=.1;const el=$('#paramCar');if(el)el.style.left=Math.min(90,t*trial.speed/8*90)+'%';if(t>=trial.time){stopAnimation();const prev=r.trials[r.trials.length-1];r.trials.push(trial);r.trials=r.trials.slice(-12);save();render();$('#parameterFeedback').textContent=prev?(prev.distance!==trial.distance&&prev.speed!==trial.speed?'距离和速度都改变了，不能单独判断某个参数的作用。':'本次用时 '+trial.time+' 秒。比较表格，说明你保持了什么、改变了什么。'):'本次用时 '+trial.time+' 秒。下一次保持一个参数不变再比较。';}},100);return;}
+ }
+-app.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b||b.disabled)return;try{if(b.dataset.nav)return navigate(b.dataset.nav);if(b.dataset.action)return await action(b.dataset.action,b);if(b.dataset.control)return doControl(b.dataset.control);if(b.dataset.choice){const key=b.dataset.choice,id=key.startsWith('intro')?'intro':'assessment',i=Number(key.at(-1)),r=record(id);r.answers[i]=Number(b.dataset.value);r.submitted=false;save();render();return;}if(b.dataset.repairUp!==undefined){const r=record('assessment'),i=Number(b.dataset.repairUp);[r.repair[i-1],r.repair[i]]=[r.repair[i],r.repair[i-1]];r.submitted=false;save();render();return;}if(b.dataset.add){record('design').steps.push(b.dataset.add);invalidateDesign();}if(b.dataset.remove!==undefined){record('design').steps.splice(Number(b.dataset.remove),1);invalidateDesign();}if(b.dataset.up!==undefined){const r=record('design'),i=Number(b.dataset.up);[r.steps[i-1],r.steps[i]]=[r.steps[i],r.steps[i-1]];invalidateDesign();}}catch(err){toast(err.message);}});
++app.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b||b.disabled)return;try{if(b.dataset.nav)return navigate(b.dataset.nav);if(b.dataset.action)return await action(b.dataset.action,b);if(b.dataset.control)return doControl(b.dataset.control);if(b.dataset.choice){const key=b.dataset.choice,id=key.startsWith('intro')?'intro':'assessment',i=Number(key.slice(-1)),r=record(id);r.answers[i]=Number(b.dataset.value);r.submitted=false;save();render();return;}if(b.dataset.repairUp!==undefined){const r=record('assessment'),i=Number(b.dataset.repairUp);[r.repair[i-1],r.repair[i]]=[r.repair[i],r.repair[i-1]];r.submitted=false;save();render();return;}if(b.dataset.add){record('design').steps.push(b.dataset.add);invalidateDesign();}if(b.dataset.remove!==undefined){record('design').steps.splice(Number(b.dataset.remove),1);invalidateDesign();}if(b.dataset.up!==undefined){const r=record('design'),i=Number(b.dataset.up);[r.steps[i-1],r.steps[i]]=[r.steps[i],r.steps[i-1]];invalidateDesign();}}catch(err){toast(err.message);}});
+ app.addEventListener('change',e=>{if(e.target.id==='testStage'&&testMode){navigate(e.target.value);return;}const id=e.target.id,v=e.target.value;if(id==='keyMoment'){const r=record('manual'),moment=R.manualMoments(r.actions).find(m=>m.index===Number(v));r.keyIndex=moment?.index;r.keyAction=moment?.action||'';r.situation='';r.outcome='';r.submitted=false;save();render();}if(id==='manualSituation'||id==='manualOutcome'){const r=record('manual');r[id==='manualSituation'?'situation':'outcome']=v;r.submitted=false;save();render();}if(['destination','robotBody','usage','noticeMode','noticeReason','revision'].includes(id)){const r=record('design');r[{destination:'destination',robotBody:'body',usage:'usage',noticeMode:'noticeMode',noticeReason:'noticeReason',revision:'revision'}[id]]=v;r.submitted=false;if(id!=='revision')invalidateDesign();else{save();render();}}if(id==='designHelpTopic'){const r=record('design');r.helpTopic=v;r.hints=0;save();render();}if(id==='obstacleHelpTopic'){const r=record('obstacle');r.helpTopic=v;r.hints=0;save();render();}if(id==='prediction'){const r=record('obstacle');r.prediction=v;r.submitted=false;save();render();}if(id==='policy'){stopAnimation();const r=record('obstacle');r.policy=v;r.testedPolicy='';r.removed=false;r.resumed=false;r.arrived=false;r.submitted=false;r.comparison='';r.result='规则已改变，请测试新规则。';save();render();}if(id==='obstacleReason'){const r=record('obstacle');r.reason=v;r.submitted=false;save();render();}if(id==='distance'||id==='paramSpeed'){if(autoTimer)stopAnimation();record('parameter')[id==='distance'?'distance':'speed']=Number(v);save();render();}});
+ app.addEventListener('input',e=>{if(e.target.id==='idea'){record('design').idea=e.target.value;save();}});
+ setInterval(()=>{if(view!=='manual'||!student&&!demo)return;const r=record('manual'),s=R.manual(r.actions);if(s.moving&&Date.now()-lastTick>=(s.speed===1?950:500)){lastTick=Date.now();doControl('tick');if(r.actions.length%5===0)save();}},100);
+ window.addEventListener('blur',()=>{if(view==='manual'&&R.manual(record('manual').actions)?.moving)doControl('stop');});
+-async function login(){app.innerHTML=`<header class="topbar"><div class="brand"><span class="brand-mark">↱</span>校园配送实验室</div><span class="pill">六年级 · 过程与控制</span></header><main class="login-layout"><section><div class="eyebrow">第3课 / 我是小小控制员</div><h1 class="hero-title">从「我来控制」<br>到 <em>自动送达。</em></h1><p class="muted">一箱图书，一段校园路线。<br>亲自控制、设计规则，让机器人接过你的任务。</p><figure class="hero-image"><img src="/assets/campus.png" alt="阳光照进校园收发与阅览空间，中央留有配送通道"><figcaption>今天的任务：把图书从收发室送到阅览室。</figcaption></figure></section><section class="login-card"><div class="eyebrow">准备进入实验</div><h2>领取你的配送任务</h2><p class="muted">选择班级和姓名，实验记录将跟随你保存。</p><label for="classSelect">我的班级</label><select id="classSelect">${['601','602','603','604','605','606'].map(c=>`<option value="${c}" ${c===loginClass?'selected':''}>${c}班</option>`).join('')}</select><label for="nameSearch">找到我的名字</label><input id="nameSearch" placeholder="输入姓名搜索" autocomplete="off"><div class="name-list" id="nameList">正在加载名单…</div><button id="manualNameToggle">名单里没有我</button><div id="manualNameWrap" class="hide"><label for="manualName">手动输入姓名</label><input id="manualName" maxlength="30" placeholder="输入真实姓名；已有同名记录会恢复"></div><p class="mini-label" id="identityConfirm">先选择你的姓名。</p><button class="primary" id="enter">确认身份，进入实验 →</button><div id="loginError" class="error" role="alert"></div><div class="login-footer"><a href="/demo">教师演示（不计入学生数据）</a><a href="/teacher">教师大屏 ↗</a></div><p class="mini-label" style="margin:15px 0 0">这是课堂身份选择，请勿选择其他同学的名字。</p></section></main>`;
++async function login(){app.innerHTML=`<header class="topbar"><div class="brand"><span class="brand-mark">↱</span>校园配送实验室</div><span class="pill">六年级 · 过程与控制</span></header><main class="login-layout"><section><div class="eyebrow">第3课 / 我是小小控制员</div><h1 class="hero-title">从「我来控制」<br>到 <em>自动送达。</em></h1><p class="muted">一箱图书，一段校园路线。<br>亲自控制、设计规则，让机器人接过你的任务。</p><figure class="hero-image"><img src="/assets/campus-lite.jpg" alt="阳光照进校园收发与阅览空间，中央留有配送通道"><figcaption>今天的任务：把图书从收发室送到阅览室。</figcaption></figure></section><section class="login-card"><div class="eyebrow">准备进入实验</div><h2>领取你的配送任务</h2><p class="muted">选择班级和姓名，实验记录将跟随你保存。</p><label for="classSelect">我的班级</label><select id="classSelect">${['601','602','603','604','605','606'].map(c=>`<option value="${c}" ${c===loginClass?'selected':''}>${c}班</option>`).join('')}</select><label for="nameSearch">找到我的名字</label><input id="nameSearch" placeholder="输入姓名搜索" autocomplete="off"><div class="name-list" id="nameList">正在加载名单…</div><button id="manualNameToggle">名单里没有我</button><div id="manualNameWrap" class="hide"><label for="manualName">手动输入姓名</label><input id="manualName" maxlength="30" placeholder="输入真实姓名；已有同名记录会恢复"></div><p class="mini-label" id="identityConfirm">先选择你的姓名。</p><button class="primary" id="enter">确认身份，进入实验 →</button><div id="loginError" class="error" role="alert"></div><div class="login-footer"><a href="/demo">教师演示（不计入学生数据）</a><a href="/teacher">教师大屏 ↗</a></div><p class="mini-label" style="margin:15px 0 0">这是课堂身份选择，请勿选择其他同学的名字。</p></section></main>`;
+  selectedId='';manualEntry=false;$('#classSelect').onchange=async e=>{loginClass=e.target.value;selectedId='';$('#identityConfirm').textContent='先选择你的姓名。';await loadNames();};$('#nameSearch').oninput=showNames;$('#manualNameToggle').onclick=()=>{manualEntry=!manualEntry;$('#manualNameWrap').classList.toggle('hide',!manualEntry);selectedId='';$('#identityConfirm').textContent=manualEntry?'请确认班级，并填写自己的姓名。':'先选择你的姓名。';showNames();};$('#enter').onclick=async()=>{const data={classId:loginClass};if(manualEntry)data.name=$('#manualName').value.trim();else data.id=selectedId;if(!data.id&&!data.name){$('#loginError').textContent='请先选择或填写自己的姓名。';return;}$('#enter').disabled=true;try{await Classroom.api('/api/login',data);await enter();}catch(e){$('#loginError').textContent=e.message;$('#enter').disabled=false;}};await loadNames();}
+ async function loadNames(){const requested=loginClass;try{const list=await Classroom.api('/api/roster?class='+requested);if(requested!==loginClass)return;loginRoster=list;showNames();}catch(e){if($('#nameList'))$('#nameList').textContent='名单尚未加载，请检查课堂服务后刷新。';}}
+-function showNames(){const q=$('#nameSearch').value.trim();$('#nameList').innerHTML='';for(const s of loginRoster.filter(s=>s.name.includes(q))){const b=document.createElement('button');b.textContent=s.name+(loginRoster.filter(x=>x.name===s.name).length>1?' · '+s.id.split('-').at(-1):'');b.className=s.id===selectedId?'selected':'';b.onclick=()=>{selectedId=s.id;manualEntry=false;$('#manualNameWrap').classList.add('hide');$('#identityConfirm').textContent=`即将进入：${loginClass}班 · ${s.name}`;showNames();};$('#nameList').appendChild(b);}if(!$('#nameList').children.length)$('#nameList').textContent='没有找到，可使用下方手动输入。';}
++function showNames(){const q=$('#nameSearch').value.trim();$('#nameList').innerHTML='';for(const s of loginRoster.filter(s=>s.name.includes(q))){const b=document.createElement('button');b.textContent=s.name+(loginRoster.filter(x=>x.name===s.name).length>1?' · '+s.id.split('-').slice(-1)[0]:'');b.className=s.id===selectedId?'selected':'';b.onclick=()=>{selectedId=s.id;manualEntry=false;$('#manualNameWrap').classList.add('hide');$('#identityConfirm').textContent=`即将进入：${loginClass}班 · ${s.name}`;showNames();};$('#nameList').appendChild(b);}if(!$('#nameList').children.length)$('#nameList').textContent='没有找到，可使用下方手动输入。';}
+ async function enter(){const data=await Classroom.api('/api/me');student=data.student;points=data.points;p=Classroom.init(student,data,sync);p.completions||={};storyState();view=p.stage||'intro';storyActive=!!Story.get(view)&&!storySeen(view);syncText=syncText==='等待登录'?'已载入课堂记录':syncText;render();Classroom.flush();}
+ (async()=>{if(demo){storyState();storyActive=!testMode&&!!Story.get(view);syncText=(testMode?'测试模式':'演示模式')+' · 不记录学生数据';render();}else try{await enter();}catch{await login();}})();
+diff --git a/index.html b/index.html
+index d14ce1d..bea6ac5 100644
+--- a/index.html
++++ b/index.html
+@@ -1 +1 @@
+-<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>校园配送实验室 · 我是小小控制员</title><link rel="stylesheet" href="/style.css"><script src="/rules.js" defer></script><script src="/story.js" defer></script><script src="/sync.js" defer></script><script src="/scene.js" defer></script><script src="/app.js" defer></script></head><body><div id="app"><p class="loading">正在打开校园配送实验室…</p></div><div id="toast" role="status" aria-live="polite"></div></body></html>
++<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>校园配送实验室 · 我是小小控制员</title><link rel="stylesheet" href="/style.css"><script src="/robot-sheet.js" defer></script><script src="/rules.js" defer></script><script src="/story.js" defer></script><script src="/sync.js" defer></script><script src="/scene.js" defer></script><script src="/app.js" defer></script></head><body><div id="app"><p class="loading">正在打开校园配送实验室…</p></div><div id="toast" role="status" aria-live="polite"></div></body></html>
+diff --git a/rules.js b/rules.js
+index b7907d6..e27b320 100644
+--- a/rules.js
++++ b/rules.js
+@@ -1,5 +1,8 @@
+ (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.Rules=api;})(typeof window==='object'?window:this,function(){
+ 'use strict';
++const Sheet=typeof module==='object'&&module.exports?require('./robot-sheet.js'):window.RobotSheet;
++function obstacleNext(r){if(!r?.originalTested)return 'test-original';if(!['wait','help'].includes(r.policy)||r.testedPolicy!==r.policy)return 'test-rule';if(!r.removed)return 'remove-box';if(r.policy==='help'&&!r.resumed)return 'confirm-resume';if(!r.arrived)return 'finish-delivery';if(r.reason!=='rule')return 'explain';return 'ready';}
++
+ const stages=[{id:'intro',title:'领取配送任务',points:5},{id:'manual',title:'我来控制',points:20},{id:'design',title:'机器人接手',points:25},{id:'obstacle',title:'应对新情况',points:25},{id:'assessment',title:'独立检验',points:10}];
+ const path=[[2,7],[3,7],[4,7],[5,7],[6,7],[6,6],[6,5],[6,4],[6,3],[7,3],[8,3],[9,3],[10,3]];
+ const allowedActions=['go','stop','left','right','slow','normal','tick'];
+@@ -13,7 +16,7 @@ function manual(actions){
+   if(a==='tick'&&s.moving){const d=[[1,0],[0,1],[-1,0],[0,-1]][s.dir],x=s.x+d[0],y=s.y+d[1];
+    if(path.some(p=>p[0]===x&&p[1]===y)||x===11&&y===3){s.x=x;s.y=y;s.trace.push([x,y]);}else{s.moving=false;s.collision=true;}}
+  }
+- s.arrived=s.x===10&&s.y===3&&!s.moving&&actions.at(-1)==='stop';return s;
++ s.arrived=s.x===10&&s.y===3&&!s.moving&&actions[actions.length-1]==='stop';return s;
+ }
+ function manualMoments(actions){
+  if(!Array.isArray(actions)||!manual(actions))return [];
+@@ -80,14 +83,14 @@ function assessmentResult(record){
+ }
+ function assessmentScore(record,which='latest'){
+  if(!record||typeof record!=='object')return null;
+- const attempt=which==='first'?record.first:record.history?.at(-1);
++ const attempt=which==='first'?record.first:record.history?.[record.history.length-1];
+  return attempt&&[0,1].includes(attempt.form)&&Array.isArray(attempt.answers)?assessmentResult(attempt):null;
+ }
+ function completed(id,r){
+  if(!r||typeof r!=='object')return false;
+  if(id==='intro')return r.submitted===true&&Array.isArray(r.answers)&&r.answers.length===2&&r.answers.every(x=>[0,1].includes(x));
+  if(id==='manual'){const s=manual(r.actions),moment=manualMoments(r.actions).find(m=>m.index===r.keyIndex);return r.submitted===true&&!!s?.arrived&&s.turns>=2&&!!moment&&moment.action===r.keyAction&&moment.situation===r.situation&&moment.outcome===r.outcome;}
+- if(id==='design'){const noticeMatches=r.noticeMode==='light'&&r.noticeReason==='quiet'||r.noticeMode==='sound'&&r.noticeReason==='hear';return r.submitted===true&&!!r.tested&&design(r).ok&&['cart','box'].includes(r.body)&&r.usage==='set-start'&&noticeMatches&&['first','stop','notify','destination','sequence'].includes(r.revision);}
++ if(id==='design'){const noticeMatches=r.noticeMode==='light'&&r.noticeReason==='quiet'||r.noticeMode==='sound'&&r.noticeReason==='hear',designReady=r.sheet===undefined?r.usage==='set-start':Sheet.complete(r.sheet,r.body);return r.submitted===true&&!!r.tested&&design(r).ok&&['cart','box','humanoid','other'].includes(r.body)&&designReady&&noticeMatches&&['first','stop','notify','destination','sequence'].includes(r.revision);}
+  if(id==='obstacle')return r.submitted===true&&!!r.originalTested&&['blocked','continue','detour'].includes(r.prediction)&&['wait','help'].includes(r.policy)&&r.testedPolicy===r.policy&&r.removed===true&&r.arrived===true&&obstacle(r.policy,r.removed,r.resumed).status==='delivered'&&r.reason==='rule';
+  if(id==='assessment')return r.submitted===true&&assessmentResult(r)===3;
+  return false;
+@@ -99,7 +102,7 @@ function standardRecord(id){
+   const moment=manualMoments(actions).find(m=>m.action==='stop'&&m.situation==='receiver');
+   return {actions,hints:0,keyIndex:moment.index,situation:moment.situation,keyAction:moment.action,outcome:moment.outcome,submitted:true};
+  }
+- if(id==='design')return {steps:['travel','stop','notify'],destination:'library',body:'cart',usage:'set-start',noticeMode:'light',noticeReason:'quiet',tested:true,history:[],hints:0,result:'图书送达、停好，并发出了到达提醒。',first:{steps:['travel','stop','notify'],destination:'library'},revision:'sequence',submitted:true};
++ if(id==='design')return {sheet:Sheet.example(),steps:['travel','stop','notify'],destination:'library',body:'cart',usage:'set-start',noticeMode:'light',noticeReason:'quiet',tested:true,history:[],hints:0,result:'图书送达、停好，并发出了到达提醒。',first:{steps:['travel','stop','notify'],destination:'library'},revision:'sequence',submitted:true};
+  if(id==='obstacle')return {policy:'wait',history:[{policy:'wait',result:'检测到纸箱，机器人停止等待通道恢复。'}],hints:0,prediction:'blocked',result:'按照设定的规则继续配送，完成送达。',originalTested:true,testedPolicy:'wait',removed:true,resumed:false,arrived:true,reason:'rule',submitted:true};
+  if(id==='assessment'){
+   const attempt={form:0,answers:[1,null,0],repair:['travel','stop','notify']};
+@@ -122,8 +125,9 @@ function validRecord(id,r){
+  if(id==='intro')return onlyKeys(r,['answers','submitted','first'])&&(!r.answers||answersValid(r.answers,2,1))&&bool(r.submitted)&&(r.first===undefined||answersValid(r.first,2,1,true));
+  if(id==='manual')return onlyKeys(r,['actions','hints','keyIndex','situation','keyAction','outcome','submitted'])&&(!r.actions||!!manual(r.actions))&&bool(r.submitted)&&(r.hints===undefined||Number.isInteger(r.hints)&&r.hints>=0&&r.hints<=3)&&(r.keyIndex===undefined||Number.isInteger(r.keyIndex)&&r.keyIndex>=0)&&oneOf(r.situation,['','corner','receiver','need-observe','observe'])&&oneOf(r.keyAction,['','left','right','stop','slow','normal'])&&oneOf(r.outcome,['','new-direction','stopped-target','speed-changed','paused']);
+  if(id==='design'){
+-  if(!onlyKeys(r,['steps','destination','body','usage','tested','history','hints','result','first','idea','revision','noticeMode','noticeReason','helpTopic','submitted']))return false;
+-  if(r.steps&&!stepsValid(r.steps)||!oneOf(r.destination,['','library','equipment'])||!oneOf(r.body,['cart','box'])||!oneOf(r.usage,['','set-start','only-power'])||!oneOf(r.noticeMode,['','light','sound'])||!oneOf(r.noticeReason,['','quiet','hear'])||!oneOf(r.helpTopic,['','direction','stop','notice','result'])||!bool(r.tested)||!bool(r.submitted)||!text(r.result,300)||!text(r.idea,300)||!oneOf(r.revision,['','first','stop','notify','destination','sequence']))return false;
++  if(!onlyKeys(r,['steps','destination','body','usage','tested','history','hints','result','first','idea','revision','noticeMode','noticeReason','helpTopic','submitted','sheet']))return false;
++  if(r.sheet!==undefined&&!Sheet.valid(r.sheet))return false;
++  if(r.steps&&!stepsValid(r.steps)||!oneOf(r.destination,['','library','equipment'])||!oneOf(r.body,['cart','box','humanoid','other'])||!oneOf(r.usage,['','set-start','only-power'])||!oneOf(r.noticeMode,['','light','sound'])||!oneOf(r.noticeReason,['','quiet','hear'])||!oneOf(r.helpTopic,['','direction','stop','notice','result'])||!bool(r.tested)||!bool(r.submitted)||!text(r.result,300)||!text(r.idea,300)||!oneOf(r.revision,['','first','stop','notify','destination','sequence']))return false;
+   if(r.hints!==undefined&&(!Number.isInteger(r.hints)||r.hints<0||r.hints>3)||r.first!==undefined&&!designSnapshotValid(r.first))return false;
+   return r.history===undefined||Array.isArray(r.history)&&r.history.length<=12&&r.history.every(h=>object(h)&&onlyKeys(h,['steps','destination','result'])&&stepsValid(h.steps)&&['','library','equipment'].includes(h.destination)&&text(h.result,300));
+  }
+@@ -149,5 +153,5 @@ function validPayload(p){
+  if(p.completions){if(typeof p.completions!=='object'||Array.isArray(p.completions))return false;for(const [id,r]of Object.entries(p.completions))if(!completed(id,r))return false;}
+  return true;
+ }
+-return {stages,path,manual,manualMoments,design,designTimeline,obstacle,questions,score,assessmentResult,assessmentScore,completed,standardRecord,validPayload};
++return {obstacleNext,stages,path,manual,manualMoments,design,designTimeline,obstacle,questions,score,assessmentResult,assessmentScore,completed,standardRecord,validPayload};
+ });
+diff --git a/server.cjs b/server.cjs
+index f0f5904..d5280b6 100644
+--- a/server.cjs
++++ b/server.cjs
+@@ -47,7 +47,7 @@ async function body(req){
+  try{return JSON.parse(data||'{}');}catch{throw Error('提交格式错误');}
+ }
+ function validate(payload){return rules.validPayload(payload);}
+-const files={'/assets/campus.png':'assets/campus.png','/assets/teacher-lan.png':'assets/teacher-lan.png','/assets/robot-xiaoda.png':'assets/robot-xiaoda.png','/':'index.html','/demo':'index.html','/test':'index.html','/index.html':'index.html','/app.js':'app.js','/story.js':'story.js','/scene.js':'scene.js','/sync.js':'sync.js','/style.css':'style.css','/rules.js':'rules.js','/teacher':'teacher.html','/teacher.html':'teacher.html','/teacher.js':'teacher.js'};
++const files={'/assets/campus-lite.jpg':'assets/campus-lite.jpg','/assets/teacher-lan-lite.png':'assets/teacher-lan-lite.png','/assets/robot-xiaoda-lite.png':'assets/robot-xiaoda-lite.png','/robot-sheet.js':'robot-sheet.js','/assets/campus.png':'assets/campus.png','/assets/teacher-lan.png':'assets/teacher-lan.png','/assets/robot-xiaoda.png':'assets/robot-xiaoda.png','/':'index.html','/demo':'index.html','/test':'index.html','/index.html':'index.html','/app.js':'app.js','/story.js':'story.js','/scene.js':'scene.js','/sync.js':'sync.js','/style.css':'style.css','/rules.js':'rules.js','/teacher':'teacher.html','/teacher.html':'teacher.html','/teacher.js':'teacher.js'};
+ const server=http.createServer(async(req,res)=>{
+  res.setHeader('X-Content-Type-Options','nosniff');
+  res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; form-action 'self'");
+@@ -122,12 +122,18 @@ const server=http.createServer(async(req,res)=>{
+    return json(res,200,{classId:cls,at:Date.now(),students});
+   }
+   if(p.startsWith('/api/'))return json(res,404,{error:'接口不存在'});
+-  if(req.method!=='GET'||!files[p])return json(res,404,{error:'页面不存在'});
++  if(!['GET','HEAD'].includes(req.method)||!files[p])return json(res,404,{error:'页面不存在'});
+   if(p==='/test'&&!auth(req,'teacher')){res.writeHead(302,{Location:'/teacher'});return res.end();}
+-  const file=files[p], ext=path.extname(file), type={'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png'}[ext];
++  const file=files[p], ext=path.extname(file), type={'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png','.jpg':'image/jpeg'}[ext];
+   const filePath=path.join(__dirname,file);
+   if(!fs.existsSync(filePath))return json(res,404,{error:'页面不存在'});
+-  res.writeHead(200,{'Content-Type':type+'; charset=utf-8','Cache-Control':'no-store'});fs.createReadStream(filePath).on('error',()=>res.destroy()).pipe(res);
++  const stat=fs.statSync(filePath), etag='W/"'+stat.size+'-'+stat.mtimeMs+'"';
++  const isImage=type.startsWith('image/'), isPage=ext==='.html';
++  const headers={'Content-Type':type+(isImage?'':'; charset=utf-8'),'Cache-Control':isPage?'no-store':isImage?'public, max-age=3600':'no-cache','ETag':etag};
++  if(!isPage&&req.headers['if-none-match']===etag){res.writeHead(304,headers);return res.end();}
++  res.writeHead(200,{...headers,'Content-Length':stat.size});
++  if(req.method==='HEAD')return res.end();
++  fs.createReadStream(filePath).on('error',()=>res.destroy()).pipe(res);
+  }catch(e){console.error('Request failed:',e.message);if(!res.headersSent)json(res,400,{error:'请求未保存，请检查连接或提交内容后重试'});else res.end();}
+ });
+ const port=Number(process.env.PORT||8784),host=process.env.HOST||'0.0.0.0';
+diff --git a/teacher.html b/teacher.html
+index 47d1116..69f5252 100644
+--- a/teacher.html
++++ b/teacher.html
+@@ -1 +1 @@
+-<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>教师大屏 · 校园配送实验室</title><link rel="stylesheet" href="/style.css"><script src="/rules.js" defer></script><script src="/teacher.js" defer></script></head><body><header class="topbar"><div class="brand"><span class="brand-mark">↱</span>校园配送实验室 <small>／ 教师大屏</small></div><div class="header-actions"><a id="teacherTestLink" href="/test" hidden>进入测试模式</a><a href="/demo" target="_blank" rel="noopener">打开独立演示</a><a href="/">学生入口</a><button id="teacherLogout" hidden>退出教师</button></div></header><main id="teacherApp" class="teacher-wrap"></main></body></html>
++<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>教师大屏 · 校园配送实验室</title><link rel="stylesheet" href="/style.css"><script src="/robot-sheet.js" defer></script><script src="/rules.js" defer></script><script src="/teacher.js" defer></script></head><body><header class="topbar"><div class="brand"><span class="brand-mark">↱</span>校园配送实验室 <small>／ 教师大屏</small></div><div class="header-actions"><a id="teacherTestLink" href="/test" hidden>进入测试模式</a><a href="/demo" target="_blank" rel="noopener">打开独立演示</a><a href="/">学生入口</a><button id="teacherLogout" hidden>退出教师</button></div></header><main id="teacherApp" class="teacher-wrap"></main></body></html>
